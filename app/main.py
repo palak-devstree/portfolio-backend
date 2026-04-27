@@ -145,9 +145,12 @@ def _register_routers(app: FastAPI) -> None:
     from app.routers import (
         auth,
         blog,
+        certificates,
         chatbot,
         contact,
         dashboard,
+        education,
+        experience,
         health,
         lab,
         profile,
@@ -167,6 +170,9 @@ def _register_routers(app: FastAPI) -> None:
     app.include_router(chatbot.router)
     app.include_router(uploads.router)
     app.include_router(contact.router)
+    app.include_router(education.router)
+    app.include_router(certificates.router)
+    app.include_router(experience.router)
 
 
 def _register_exception_handlers(app: FastAPI) -> None:

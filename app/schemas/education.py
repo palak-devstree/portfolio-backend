@@ -16,6 +16,7 @@ class EducationBase(BaseModel):
     description: Optional[str] = None  # Legacy field
     description_points: List[str] = Field(default_factory=list)  # Preferred: list of bullet points
     location: Optional[str] = Field(None, max_length=255)
+    image_url: Optional[str] = Field(None, max_length=500)
     display_order: int = Field(default=0, ge=0)
 
 
@@ -35,6 +36,7 @@ class EducationUpdate(BaseModel):
     description: Optional[str] = None
     description_points: Optional[List[str]] = None
     location: Optional[str] = Field(None, max_length=255)
+    image_url: Optional[str] = Field(None, max_length=500)
     display_order: Optional[int] = Field(None, ge=0)
 
 

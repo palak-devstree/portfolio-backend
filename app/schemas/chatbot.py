@@ -14,3 +14,8 @@ class ChatbotResponse(BaseModel):
     message: str
     intent: str
     suggestions: List[str] = []
+
+
+class ChatbotDefaultQuestionsResponse(BaseModel):
+    """Response schema for fetching default chatbot questions."""
+    default_questions: List[str]

@@ -4,8 +4,13 @@ import re
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from fastapi import Request
+
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.models.chatbot_query import ChatbotQuery
+from app.models.profile import Profile
+from app.services.analytics import anonymize_ip, get_client_ip
 from app.services.cache import CacheService
 from app.services.database import DatabaseService
 
@@ -13,6 +18,7 @@ logger = get_logger(__name__)
 
 
 class IntentType(str, Enum):
+    GREETING = "greeting"
     PROJECTS = "projects"
     SKILLS = "skills"
     EXPERIENCE = "experience"
@@ -28,6 +34,7 @@ class AIProvider(str, Enum):
 
 # Suggestions per intent
 INTENT_SUGGESTIONS: Dict[IntentType, List[str]] = {
+    IntentType.GREETING: ["Ask about projects", "Ask about skills", "Ask about experience"],
     IntentType.PROJECTS: ["Ask about skills", "Ask about system design", "Ask about blog posts"],
     IntentType.SKILLS: ["Ask about projects", "Ask about experience", "Ask about system design"],
     IntentType.EXPERIENCE: ["Ask about projects", "Ask about skills", "Ask about blog posts"],
@@ -35,6 +42,14 @@ INTENT_SUGGESTIONS: Dict[IntentType, List[str]] = {
     IntentType.BLOG: ["Ask about projects", "Ask about system design", "Ask about skills"],
     IntentType.GENERAL: ["Ask about projects", "Ask about skills", "Ask about blog posts"],
 }
+
+
+# Static greeting responses
+GREETING_RESPONSES = [
+    "Hi! I'm here to help you learn more about this portfolio. What would you like to know?",
+    "Hello! Feel free to ask me about projects, skills, experience, or anything else!",
+    "Hey there! I can answer questions about the work showcased here. What interests you?",
+]
 
 
 class ChatbotService:
@@ -62,6 +77,10 @@ class ChatbotService:
     def _load_intent_patterns(self) -> Dict[IntentType, List[str]]:
         """Load regex patterns for intent classification."""
         return {
+            IntentType.GREETING: [
+                r"^(hi|hello|hey|greetings|good\s+(morning|afternoon|evening))[\s!.?]*$",
+                r"^(what'?s\s+up|howdy|yo)[\s!.?]*$",
+            ],
             IntentType.PROJECTS: [
                 r"\bproject[s]?\b",
                 r"\bbuilt?\b",
@@ -131,15 +150,31 @@ class ChatbotService:
 
         return IntentType.GENERAL
 
-    async def process_query(self, query: str, session_id: str) -> Dict[str, Any]:
+    async def process_query(self, query: str, session_id: str, request: Request) -> Dict[str, Any]:
         """
         Process a chatbot query with hybrid approach.
         1. Classify intent (rule-based, zero cost)
-        2. Check cache (hashlib.md5 for stable cross-process keys)
-        3. Handle simple intents from DB; complex via AI API
-        4. Cache response and update session
+        2. Handle greetings with static responses (no AI call)
+        3. Check cache (hashlib.md5 for stable cross-process keys)
+        4. Handle simple intents from DB; complex via AI API
+        5. Track query and response in database
+        6. Cache response and update session
         """
         intent = self.classify_intent(query)
+
+        # Get default questions from profile
+        default_questions = await self._get_default_questions()
+
+        # Handle greetings with static response (no AI call)
+        if intent == IntentType.GREETING:
+            import random
+            response = {
+                "message": random.choice(GREETING_RESPONSES),
+                "intent": intent.value,
+                "suggestions": default_questions,
+            }
+            await self._track_query(query, response, session_id, request)
+            return response
 
         # Stable cache key using hashlib.md5 (NOT Python built-in hash())
         query_hash = hashlib.md5(query.lower().encode()).hexdigest()
@@ -149,7 +184,9 @@ class ChatbotService:
         if cached:
             logger.info("chatbot_cache_hit", query_hash=query_hash)
             import json
-            return json.loads(cached)
+            response = json.loads(cached)
+            await self._track_query(query, response, session_id, request)
+            return response
 
         # Route to appropriate handler
         if intent in [
@@ -164,6 +201,9 @@ class ChatbotService:
         else:
             response = await self.handle_complex_query(query, intent)
             await self.cache.set(cache_key, response, ttl=1800)  # 30 min
+
+        # Track query in database
+        await self._track_query(query, response, session_id, request)
 
         # Update session context
         await self.cache.set(
@@ -345,6 +385,43 @@ class ChatbotService:
             max_tokens=500,
         )
         return response.choices[0].message.content or ""
+
+    async def _get_default_questions(self) -> List[str]:
+        """Fetch default chatbot questions from profile."""
+        try:
+            profile = await self.db.get_by_id(Profile, 1)
+            if profile and profile.chatbot_default_questions:
+                return profile.chatbot_default_questions
+        except Exception as exc:
+            logger.warning("failed_to_fetch_default_questions", error=str(exc))
+        
+        # Fallback to default questions
+        return [
+            "What projects have you built?",
+            "What are your core skills?",
+            "Tell me about your experience"
+        ]
+
+    async def _track_query(
+        self, query: str, response: Dict[str, Any], session_id: str, request: Request
+    ) -> None:
+        """Track chatbot query and response in database."""
+        try:
+            raw_ip = get_client_ip(request)
+            anon_ip = anonymize_ip(raw_ip) if raw_ip else None
+
+            chatbot_query = ChatbotQuery(
+                session_id=session_id,
+                query=query,
+                response=response.get("message", ""),
+                intent=response.get("intent", "general"),
+                ip_address=anon_ip,
+                user_agent=request.headers.get("User-Agent", "")[:500],
+            )
+
+            await self.db.create(chatbot_query)
+        except Exception as exc:
+            logger.warning("chatbot_query_tracking_failed", error=str(exc))
 
 
 def get_chatbot_service(

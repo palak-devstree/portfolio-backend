@@ -22,6 +22,7 @@ class Experience(Base):
     description_points = Column(ARRAY(String), nullable=False, default=[])  # List of bullet points
     technologies = Column(ARRAY(String), nullable=False, default=[])
     project_urls = Column(ARRAY(String), nullable=False, default=[])
+    image_url = Column(String(500), nullable=True)
     display_order = Column(Integer, nullable=False, default=0)
     
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

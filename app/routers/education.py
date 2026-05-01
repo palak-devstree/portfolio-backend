@@ -108,12 +108,26 @@ async def delete_education(
     cache: CacheService = Depends(get_cache),
     _: dict = Depends(get_current_admin),
 ) -> None:
-    """Delete an education record. Admin only."""
+    """Delete an education record and its associated Cloudinary image. Admin only."""
     db = DatabaseService(session)
     education = await db.get_by_id(Education, education_id)
     if not education:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Education not found")
 
+    # Delete from Cloudinary if image_url exists
+    if education.image_url:
+        try:
+            from app.services.cloudinary_service import CloudinaryService
+            cloudinary_service = CloudinaryService()
+            deleted = cloudinary_service.delete_by_url(education.image_url)
+            if deleted:
+                logger.info("cloudinary_image_deleted", education_id=education_id, url=education.image_url)
+            else:
+                logger.warning("cloudinary_image_not_deleted", education_id=education_id, url=education.image_url)
+        except Exception as exc:
+            logger.error("cloudinary_cleanup_failed", education_id=education_id, error=str(exc))
+
     await db.delete(education)
     await cache.invalidate_pattern("education:*")
     logger.info("education_deleted", education_id=education_id)
+

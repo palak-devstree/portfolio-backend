@@ -58,6 +58,15 @@ class ProfileBase(BaseModel):
     current_learning: List[str] = Field(default_factory=list)
     current_building: List[str] = Field(default_factory=list)
     current_exploring: List[str] = Field(default_factory=list)
+    
+    # Chatbot Default Questions
+    chatbot_default_questions: List[str] = Field(
+        default_factory=lambda: [
+            "What projects have you built?",
+            "What are your core skills?",
+            "Tell me about your experience"
+        ]
+    )
 
     # Site Copy
     navbar_brand: Optional[str] = Field(None, max_length=255)
@@ -122,6 +131,9 @@ class ProfileUpdate(BaseModel):
     current_learning: Optional[List[str]] = None
     current_building: Optional[List[str]] = None
     current_exploring: Optional[List[str]] = None
+    
+    # Chatbot Default Questions
+    chatbot_default_questions: Optional[List[str]] = None
 
     # Site Copy
     navbar_brand: Optional[str] = Field(None, max_length=255)

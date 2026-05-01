@@ -36,9 +36,9 @@ def upgrade() -> None:
         sa.Column("linkedin_url", sa.String(500), nullable=True),
         sa.Column("twitter_url", sa.String(500), nullable=True),
         sa.Column("website_url", sa.String(500), nullable=True),
-        sa.Column("show_blog", sa.Boolean(), nullable=False, server_default="false")
+        sa.Column("show_blog", sa.Boolean(), nullable=False, server_default="false"),
         sa.Column("show_projects", sa.Boolean(), nullable=False, server_default="true"),
-        sa.Column("show_system_designs", sa.Boolean(), nullable=False, server_default="true"),
+        sa.Column("show_system_designs", sa.Boolean(), nullable=False, server_default="false"),
         sa.Column("show_lab", sa.Boolean(), nullable=False, server_default="false"),
         sa.Column("show_about", sa.Boolean(), nullable=False, server_default="true"),
         sa.Column("current_learning", postgresql.ARRAY(sa.String()), nullable=False),

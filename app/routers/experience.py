@@ -108,12 +108,26 @@ async def delete_experience(
     cache: CacheService = Depends(get_cache),
     _: dict = Depends(get_current_admin),
 ) -> None:
-    """Delete an experience record. Admin only."""
+    """Delete an experience record and its associated Cloudinary image. Admin only."""
     db = DatabaseService(session)
     experience = await db.get_by_id(Experience, experience_id)
     if not experience:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Experience not found")
 
+    # Delete from Cloudinary if image_url exists
+    if experience.image_url:
+        try:
+            from app.services.cloudinary_service import CloudinaryService
+            cloudinary_service = CloudinaryService()
+            deleted = cloudinary_service.delete_by_url(experience.image_url)
+            if deleted:
+                logger.info("cloudinary_image_deleted", experience_id=experience_id, url=experience.image_url)
+            else:
+                logger.warning("cloudinary_image_not_deleted", experience_id=experience_id, url=experience.image_url)
+        except Exception as exc:
+            logger.error("cloudinary_cleanup_failed", experience_id=experience_id, error=str(exc))
+
     await db.delete(experience)
     await cache.invalidate_pattern("experience:*")
     logger.info("experience_deleted", experience_id=experience_id)
+

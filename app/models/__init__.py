@@ -2,6 +2,7 @@
 from app.models.analytics import Analytics
 from app.models.blog_post import BlogPost
 from app.models.certificate import Certificate
+from app.models.chatbot_query import ChatbotQuery
 from app.models.contact_message import ContactMessage
 from app.models.dashboard_metrics import DashboardMetrics
 from app.models.education import Education
@@ -15,6 +16,7 @@ __all__ = [
     "Analytics",
     "BlogPost",
     "Certificate",
+    "ChatbotQuery",
     "ContactMessage",
     "DashboardMetrics",
     "Education",

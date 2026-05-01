@@ -52,7 +52,7 @@ def upgrade() -> None:
     # Drop old column and rename new one
     op.drop_column("profile", "skills")
     op.alter_column("profile", "skills_jsonb", new_column_name="skills", nullable=False,
-                    server_default="'[]'::jsonb")
+                    server_default=sa.text("'[]'::jsonb"))
 
 
 def downgrade() -> None:
@@ -74,4 +74,4 @@ def downgrade() -> None:
 
     op.drop_column("profile", "skills")
     op.alter_column("profile", "skills_arr", new_column_name="skills", nullable=False,
-                    server_default="'{}'")
+                    server_default=sa.text("'{}'"))

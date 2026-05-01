@@ -108,12 +108,26 @@ async def delete_certificate(
     cache: CacheService = Depends(get_cache),
     _: dict = Depends(get_current_admin),
 ) -> None:
-    """Delete a certificate. Admin only."""
+    """Delete a certificate and its associated Cloudinary image. Admin only."""
     db = DatabaseService(session)
     certificate = await db.get_by_id(Certificate, certificate_id)
     if not certificate:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Certificate not found")
 
+    # Delete from Cloudinary if image_url exists
+    if certificate.image_url:
+        try:
+            from app.services.cloudinary_service import CloudinaryService
+            cloudinary_service = CloudinaryService()
+            deleted = cloudinary_service.delete_by_url(certificate.image_url)
+            if deleted:
+                logger.info("cloudinary_image_deleted", certificate_id=certificate_id, url=certificate.image_url)
+            else:
+                logger.warning("cloudinary_image_not_deleted", certificate_id=certificate_id, url=certificate.image_url)
+        except Exception as exc:
+            logger.error("cloudinary_cleanup_failed", certificate_id=certificate_id, error=str(exc))
+
     await db.delete(certificate)
     await cache.invalidate_pattern("certificates:*")
     logger.info("certificate_deleted", certificate_id=certificate_id)
+

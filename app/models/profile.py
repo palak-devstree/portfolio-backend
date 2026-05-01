@@ -53,6 +53,13 @@ class Profile(Base):
     current_learning = Column(ARRAY(String), nullable=False, default=[])
     current_building = Column(ARRAY(String), nullable=False, default=[])
     current_exploring = Column(ARRAY(String), nullable=False, default=[])
+    
+    # Chatbot Default Questions (dynamic from admin)
+    chatbot_default_questions = Column(ARRAY(String), nullable=False, default=[
+        "What projects have you built?",
+        "What are your core skills?",
+        "Tell me about your experience"
+    ])
 
     # Site Copy — customisable strings shown on the public portfolio
     navbar_brand = Column(String(255), nullable=True, default='')

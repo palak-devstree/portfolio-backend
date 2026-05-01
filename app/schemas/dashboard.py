@@ -11,4 +11,8 @@ class DashboardResponse(BaseModel):
     lab_experiments_count: int = Field(..., ge=0)
     uptime_percentage: float = Field(..., ge=0.0, le=100.0)
     total_views: int = Field(..., ge=0)
+    # New live metrics
+    unique_users: int = Field(..., ge=0, description="Total unique users based on IP")
+    chatbot_queries_count: int = Field(..., ge=0, description="Total chatbot queries answered")
+    contact_messages_count: int = Field(..., ge=0, description="Total contact messages received")
     timestamp: datetime

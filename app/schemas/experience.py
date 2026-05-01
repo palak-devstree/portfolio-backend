@@ -18,6 +18,7 @@ class ExperienceBase(BaseModel):
     description_points: List[str] = Field(default_factory=list)  # Preferred: list of bullet points
     technologies: List[str] = Field(default_factory=list)
     project_urls: List[str] = Field(default_factory=list)
+    image_url: Optional[str] = Field(None, max_length=500)
     display_order: int = Field(default=0, ge=0)
 
 
@@ -39,6 +40,7 @@ class ExperienceUpdate(BaseModel):
     description_points: Optional[List[str]] = None
     technologies: Optional[List[str]] = None
     project_urls: Optional[List[str]] = None
+    image_url: Optional[str] = Field(None, max_length=500)
     display_order: Optional[int] = Field(None, ge=0)
 
 

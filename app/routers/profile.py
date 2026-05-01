@@ -26,6 +26,7 @@ async def get_profile(session: AsyncSession = Depends(get_db)) -> ProfileRespons
     if not profile:
         logger.info("profile_not_found_returning_fallback")
         # Return fallback profile data when database is empty
+        from datetime import datetime
         return ProfileResponse(
             id=1,
             full_name="Alex Chen",
@@ -98,6 +99,8 @@ async def get_profile(session: AsyncSession = Depends(get_db)) -> ProfileRespons
             heading_learning="Currently Learning",
             heading_building="Currently Building",
             heading_exploring="Currently Exploring",
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
         )
     
     logger.info("profile_fetched", profile_id=profile.id)
@@ -178,3 +181,51 @@ async def delete_profile(
     
     await db.delete(profile)
     logger.info("profile_deleted", profile_id=profile.id)
+
+
+@router.patch("/profile/toggles", response_model=ProfileResponse)
+async def update_feature_toggles(
+    toggles: dict[str, bool],
+    session: AsyncSession = Depends(get_db),
+    _: dict = Depends(get_current_admin),
+) -> ProfileResponse:
+    """
+    Update feature visibility toggles (admin only).
+    Accepts a dict of toggle names and their boolean values.
+    Example: {"show_blog": true, "show_projects": false}
+    
+    Valid toggles:
+    - show_blog
+    - show_projects
+    - show_system_designs
+    - show_lab
+    - show_about
+    - show_education
+    - show_certificates
+    - show_experience
+    """
+    db = DatabaseService(session)
+    profile = await db.get_first(Profile)
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Profile not found.",
+        )
+
+    # Validate toggle names
+    valid_toggles = {
+        "show_blog", "show_projects", "show_system_designs", "show_lab",
+        "show_about", "show_education", "show_certificates", "show_experience"
+    }
+    
+    invalid_keys = set(toggles.keys()) - valid_toggles
+    if invalid_keys:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid toggle names: {', '.join(invalid_keys)}"
+        )
+
+    # Update only the provided toggles
+    updated = await db.update(profile, toggles)
+    logger.info("feature_toggles_updated", toggles=toggles)
+    return ProfileResponse.model_validate(updated)

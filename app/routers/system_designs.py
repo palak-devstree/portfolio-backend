@@ -123,7 +123,7 @@ async def delete_system_design(
     cache: CacheService = Depends(get_cache),
     _: dict = Depends(get_current_admin),
 ) -> None:
-    """Delete a system design. Admin only."""
+    """Delete a system design and its associated Cloudinary image. Admin only."""
     db = DatabaseService(session)
     design = await db.get_by_id(SystemDesign, design_id)
     if not design:
@@ -131,6 +131,22 @@ async def delete_system_design(
             status_code=status.HTTP_404_NOT_FOUND, detail="System design not found"
         )
 
+    # Delete from Cloudinary if diagram_url exists
+    if design.diagram_url:
+        try:
+            from app.services.cloudinary_service import CloudinaryService
+            cloudinary_service = CloudinaryService()
+            deleted = cloudinary_service.delete_by_url(design.diagram_url)
+            if deleted:
+                logger.info("cloudinary_image_deleted", design_id=design_id, url=design.diagram_url)
+            else:
+                logger.warning("cloudinary_image_not_deleted", design_id=design_id, url=design.diagram_url)
+        except Exception as exc:
+            # Don't fail the delete if Cloudinary cleanup fails
+            logger.error("cloudinary_cleanup_failed", design_id=design_id, error=str(exc))
+
+    # Delete from database
     await db.delete(design)
     await cache.invalidate_pattern("system_designs:*")
     logger.info("system_design_deleted", design_id=design_id)
+

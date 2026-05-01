@@ -20,6 +20,7 @@ class Education(Base):
     description = Column(Text, nullable=True)  # Legacy single text field
     description_points = Column(ARRAY(String), nullable=False, default=[])  # List of bullet points
     location = Column(String(255), nullable=True)
+    image_url = Column(String(500), nullable=True)
     display_order = Column(Integer, nullable=False, default=0)
     
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
